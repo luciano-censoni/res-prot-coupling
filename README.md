@@ -1,7 +1,7 @@
 # res-prot-coupling
 
-Required packages: numpy, scipy, matplotlib
-Optional networkx package may be found at https://networkx.readthedocs.io/en/stable/download.html
+Required packages: numpy, scipy, matplotlib.
+Optional networkx package may be found at https://networkx.readthedocs.io/en/stable/download.html.
 
 usage: python residue-protein-coupling.py FILE.pdb kr tau
 
