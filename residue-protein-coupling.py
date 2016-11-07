@@ -15,15 +15,16 @@ if use_nx:
   from networkx import Graph, write_gpickle, laplacian_matrix
 
 
-def res_prot_coupling(lap_mat, length, tau, k_r):
-  neg_lap_mat = -1.0 * lap_mat
+def res_prot_coupling(lap_mat, length, k_r, tau):
+  neg_lap_mat = (-1.0 * lap_mat)
   coupling = []
+  T0 = matrix(zeros(length)) #matrix type for transposition
+  bath_mat = zeros((length, length))
   for i in range(length):
-    T0 = zeros(length)
-    T0[i] = 1.0 #heated residue
-    T0 = matrix(T0)
-    bath_mat = (T0.T * T0) * k_r #B matrix
-    T0 *= 300.0
+    T0 *= 0.0       #resetting
+    bath_mat *= 0.0 #resetting
+    T0[0,i] = 300.0 #heated residue
+    bath_mat[i][i] =  k_r #B matrix
     coupling.append( ( (expm( (neg_lap_mat - bath_mat) * tau) * (T0.T-300.0)) + 300.0 ).mean() )
   return coupling
 
@@ -44,12 +45,16 @@ except:
 try:
   k_r = float(argv[2])
 except:
-  k_r = raw_input("Input a value for k_r: ")
+  k_r = float(raw_input("Input a value for k_r: "))
 
 try:
   tau = float(argv[3])
 except:
-  tau = raw_input("Input a value for tau: ")
+  tau = float(raw_input("Input a value for tau: "))
+
+print "Protein file:", fil
+print "k_r =", k_r
+print "tau =", tau
 
 ident, _, ext = fil.rpartition(".")
 del _
@@ -62,7 +67,10 @@ else:
   exit()
 #reading pdb file into adjacency matrix
 
-for i in range(adj_mat.shape[0]):
+assert adj_mat.shape[0] == len(resid_name) #size
+length = len(resid_name)
+
+for i in range(length):
   adj_mat[i][i] = 0.0 #no loops
 
 try:
@@ -71,9 +79,6 @@ try:
 except:
   print "Problem writing adjacency matrix; terminating."
   exit()
-
-assert adj_mat.shape[0] == len(resid_name) #size
-length = len(resid_name)
 
 if use_nx:
   graph = Graph()
@@ -86,7 +91,7 @@ if use_nx:
   for i in range(length):
     for j in range(length):
       if adj_mat[i][j]: pairs.append( (resid_name[i][0],resid_name[j][0],{'weight':1.0/adj_mat[i][j]}) )
-
+      #edge weight as a function of distance may be changed here
   graph.add_edges_from(pairs)
 
   try:
@@ -98,22 +103,21 @@ if use_nx:
 #use_nx
 
 #for debugging
-#tau = 14.5; k_r = 10.0**3 #2VUJ
-#tau = 11.0; k_r = 10.0**3 #2VUL
-#tau = 15.0; k_r = 10.0**3 #1F5J
-#tau = 18.0; k_r = 10.0**3 #1M4W
-#tau = 9.5;  k_r = 10.0**3 #1XNB
+#k_r = 10.0**3; tau = 14.5 #2VUJ
+#k_r = 10.0**3; tau = 11.0 #2VUL
+#k_r = 10.0**3; tau = 15.0 #1F5J
+#k_r = 10.0**3; tau = 18.0 #1M4W
+#k_r = 10.0**3; tau = 9.5  #1XNB
 
 if use_nx:
   lap_mat = laplacian_matrix(graph).toarray() #original type is sparse matrix
 else:
-  lap_mat = -1.0 * adj_mat
+  lap_mat = (-1.0 * adj_mat)
   for i in range(length):
-    row_sum = sum(adj_mat[i])
-    lap_mat[i][i] = row_sum
+    lap_mat[i][i] = sum(adj_mat[i])
 
 print "Calculating couplings..."
-coupling = zscore( res_prot_coupling(lap_mat, length, tau, k_r) )
+coupling = zscore( res_prot_coupling(lap_mat, length, k_r, tau) )
 
 if use_nx:
   nod = graph.nodes()
@@ -133,6 +137,12 @@ try:
 except:
   print "Problem writing couplings; terminating."
   exit()
+
+#checking for missing residues
+for i in range(1,len(nod)):
+  if nod[i]-nod[i-1] != 1:
+    print "WARNING: possible missing residues in pdb file. Gap found between residues", nod[i-1], "and", nod[i]
+    print  "Careful interpretation of all generated plots is recommended."
 
 print "Data saved successfully."
 print "Program end."

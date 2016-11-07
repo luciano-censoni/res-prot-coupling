@@ -42,8 +42,10 @@ def get_atoms_pdb(pdb_file, hydrogens=False):
   resid_name = []
   #residue names and indexes
 
-  for line in pdb:
-    if line[0:3] == 'TER': break #chain end, exit loop
+  for ln, line in enumerate(pdb):
+    if line[0:3] == 'TER':
+      if verbose: print "Chain termination reached at line", ln+1
+      break #chain end, exit loop
     if line[0:4] != 'ATOM' and line[0:6] != 'HETATM': continue #protein atoms not reached yet, jump to next line
 
     line = line[:-1] #removing \n from end of line
@@ -52,7 +54,7 @@ def get_atoms_pdb(pdb_file, hydrogens=False):
     l = match(pdb_re, line).groups() #separating fields
 
     if l[4] == 'TIP3': break #for pdbs with waters before TER
-    if l[3] == 'B': continue #ignoring alternative conformations
+    if l[3] == 'B': continue #ignoring alternative atomic conformations
 
     #having made it this far, this is a protein atom
     n_atoms += 1 #for consistency checking
