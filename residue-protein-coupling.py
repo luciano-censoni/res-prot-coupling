@@ -1,18 +1,18 @@
-#AUTHOR: Luciano Censoni, 2016
+#AUTHOR: Luciano Censoni, 2016; luciano.censoni at gmail dot com
 #Institute of Chemistry, University of Campinas
 #USAGE: python residue-protein-coupling.py FILE.pdb k_r tau
 
 from contacts import contacts
 from sys import argv, exit
-from networkx import Graph, write_gpickle, laplacian_matrix
 from numpy import array, savetxt, zeros, matrix
 from scipy.linalg import expm
-from json import load
 from scipy.stats import zscore
-from matplotlib import use
-use("Agg"); del use
 from matplotlib import pyplot as py
-py.ioff()
+
+use_nx = False
+#set to True to use the networkx package and write an additional graph 'gpickle' file
+if use_nx:
+  from networkx import Graph, write_gpickle, laplacian_matrix
 
 
 def res_prot_coupling(lap_mat, length, tau, k_r):
@@ -39,23 +39,23 @@ cutoff = 6.0
 try:
   fil = argv[1]
 except:
-  fil = raw_input("Enter protein .pdb file path: ")
+  fil = raw_input("Input protein .pdb file path: ")
 
 try:
   k_r = float(argv[2])
 except:
-  k_r = raw_input("Enter a value for k_r: ")
+  k_r = raw_input("Input a value for k_r: ")
 
 try:
   tau = float(argv[3])
 except:
-  tau = raw_input("Enter a value for tau: ")
+  tau = raw_input("Input a value for tau: ")
 
 ident, _, ext = fil.rpartition(".")
 del _
 ident = ident.rpartition("/")[-1]
 
-if ext == "pdb":
+if ext == "pdb": #naive extension file type check
   adj_mat, resid_name = contacts(fil, hydrogens, cutoff)
 else:
   print "Unknown file type; terminating."
@@ -72,56 +72,53 @@ except:
   print "Problem writing adjacency matrix; terminating."
   exit()
 
-graph = Graph()
+assert adj_mat.shape[0] == len(resid_name) #size
+length = len(resid_name)
 
-assert adj_mat.shape[0] == len(resid_name)
+if use_nx:
+  graph = Graph()
 
-for i in range(len(resid_name)):
-  graph.add_node( resid_name[i][0], residue = resid_name[i][1] + str(resid_name[i][0]) )
-#possibly different numbering stops creating graph directly from adjacency matrix
+  for i in range(length):
+    graph.add_node( resid_name[i][0], residue = resid_name[i][1] + str(resid_name[i][0]) )
+  #possibly different numbering stops creating graph directly from adjacency matrix
 
-pairs = []
-for i in range(len(graph)):
-  for j in range(len(graph)):
-    if adj_mat[i][j]: pairs.append( (resid_name[i][0],resid_name[j][0],{'weight':1.0/adj_mat[i][j]}) )
+  pairs = []
+  for i in range(length):
+    for j in range(length):
+      if adj_mat[i][j]: pairs.append( (resid_name[i][0],resid_name[j][0],{'weight':1.0/adj_mat[i][j]}) )
 
-graph.add_edges_from(pairs)
+  graph.add_edges_from(pairs)
 
-try:
-  write_gpickle(graph, ident+".graph.gpickle")
-  print "Graph written successfully."
-except:
-  print "Problem writing graph; terminating."
-  exit()
+  try:
+    write_gpickle(graph, ident+".graph.gpickle")
+    print "Graph written successfully."
+  except:
+    print "Problem writing graph; terminating."
+    exit()
+#use_nx
 
 #for debugging
-#2VUJ:
-#tau  = 14.5
-#k_r  = 10.0**3
+#tau = 14.5; k_r = 10.0**3 #2VUJ
+#tau = 11.0; k_r = 10.0**3 #2VUL
+#tau = 15.0; k_r = 10.0**3 #1F5J
+#tau = 18.0; k_r = 10.0**3 #1M4W
+#tau = 9.5;  k_r = 10.0**3 #1XNB
 
-#2VUL:
-#tau  = 11.0
-#k_r  = 10.0**3
-
-#1F5J:
-#tau  = 15.0
-#k_r  = 10.0**3
-
-#1M4W:
-#tau  = 18.0
-#k_r  = 10.0**3
-
-#1XNB:
-#tau  = 9.5
-#k_r  = 10.0**3
-
-lap_mat = laplacian_matrix(graph).toarray() #original type is sparse matrix
-length = len(lap_mat)
+if use_nx:
+  lap_mat = laplacian_matrix(graph).toarray() #original type is sparse matrix
+else:
+  lap_mat = -1.0 * adj_mat
+  for i in range(length):
+    row_sum = sum(adj_mat[i])
+    lap_mat[i][i] = row_sum
 
 print "Calculating couplings..."
 coupling = zscore( res_prot_coupling(lap_mat, length, tau, k_r) )
 
-nod = graph.nodes()
+if use_nx:
+  nod = graph.nodes()
+else:
+  nod = map(lambda x: x[0], resid_name)
 #plotting, saving
 py.plot(nod, coupling)
 py.grid(True)
