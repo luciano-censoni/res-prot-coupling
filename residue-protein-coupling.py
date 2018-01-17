@@ -1,5 +1,6 @@
-#AUTHOR: Luciano Censoni, 2016; luciano.censoni at gmail dot com
-#Institute of Chemistry, University of Campinas
+# AUTHOR: Luciano Censoni, 2016
+# Institute of Chemistry, University of Campinas
+# luciano.censoni@gmail.com
 #USAGE: python residue-protein-coupling.py FILE.pdb k_r tau
 
 from contacts import contacts
