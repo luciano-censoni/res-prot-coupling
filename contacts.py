@@ -2,6 +2,7 @@
 # Institute of Chemistry - University of Campinas
 # luciano.censoni@gmail.com
 
+
 from re import match
 from numpy import array, dstack, logical_or, transpose
 from scipy.spatial.distance import cdist
