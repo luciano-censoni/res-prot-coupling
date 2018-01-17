@@ -1,5 +1,6 @@
-#AUTHOR: Luciano Censoni, 2016
-#Institute of Chemistry - University of Campinas
+# AUTHOR: Luciano Censoni, 2016
+# Institute of Chemistry - University of Campinas
+# luciano.censoni@gmail.com
 
 from re import match
 from numpy import array, dstack, logical_or, transpose
